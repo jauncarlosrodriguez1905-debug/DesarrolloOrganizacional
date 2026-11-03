@@ -125,7 +125,7 @@ export default async function EvidenciasPage({
                 </div>
                 <div className="row-actions" style={{ alignItems: 'center' }}>
                   {urlOf.get(f.file_path) && (
-                    <a href={urlOf.get(f.file_path)} target="_blank" rel="noopener noreferrer" className="link">Abrir</a>
+                   <a href={urlOf.get(f.file_path) ?? undefined} target="_blank" rel="noopener noreferrer" className="link">Abrir</a>
                   )}
                   {canDelete && (
                     <form action={removeEvidence}>
