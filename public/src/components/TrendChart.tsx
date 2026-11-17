@@ -5,14 +5,14 @@ export default function TrendChart({ points, active }: { points: TrendPoint[]; a
   const W = 640, H = 250, L = 40, R = 12, T = 18, B = 32
   const plotW = W - L - R
   const plotH = H - T - B
-  const MAX = 120
+  const MAX = 100
   const y = (v: number) => T + plotH - (Math.min(v, MAX) / MAX) * plotH
   const slot = plotW / points.length
   const barW = Math.min(28, slot * 0.28)
 
   return (
     <svg viewBox={`0 0 ${W} ${H}`} className="chart" role="img" aria-label="Resultado promedio por ciclo: autoevaluación y jefe">
-      {[0, 40, 80, 100, 120].map((t) => (
+      {[0, 20, 40, 60, 80, 100].map((t) => (
         <g key={t}>
           <line x1={L} x2={W - R} y1={y(t)} y2={y(t)} className={t === 100 ? 'chart-goal' : 'chart-grid'} />
           <text x={L - 8} y={y(t) + 4} textAnchor="end" className="chart-axis">{t}</text>

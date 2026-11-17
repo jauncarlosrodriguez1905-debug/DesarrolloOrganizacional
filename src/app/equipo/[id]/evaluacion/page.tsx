@@ -265,7 +265,7 @@ export default async function EvaluatePersonPage({
                 <div className="panel-head">
                   <div>
                     <h2>{cycleLabel(cycles, cycle)}</h2>
-                    <p className="score-legend">{[1, 2, 3, 4, 5].map((n) => SCORE_LABEL[n]).join('  ·  ')}</p>
+                    <p className="score-legend">Escala Likert: {[1, 2, 3, 4, 5].map((n) => SCORE_LABEL[n]).join('  ·  ')}</p>
                   </div>
                   <span className={`badge ${published ? 'badge--approved' : 'badge--draft'}`}>
                     {published ? 'Publicada' : 'Sin publicar'}

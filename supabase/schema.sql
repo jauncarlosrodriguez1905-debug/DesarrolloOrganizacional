@@ -165,10 +165,13 @@ end $$;
 create trigger on_auth_user_created after insert on auth.users
   for each row execute function public.handle_new_user();
 
--- ---------- Escala de calificación (igual que el HTML original) ----------
+-- ---------- Escala Likert de 5 puntos, con tope en 100% ----------
+-- 1 = 20%, 2 = 40%, 3 = 60%, 4 = 80%, 5 = 100%. Antes el 5 valía 120%.
+-- Las vistas cycle_results y objective_report usan esta función, así que
+-- al actualizarla sus resultados también quedan topados a 100%.
 create or replace function public.score_factor(s int) returns numeric
 language sql immutable as $$
-  select case s when 1 then 0 when 2 then 0.5 when 3 then 0.8 when 4 then 1.0 when 5 then 1.2 else 0 end
+  select case s when 1 then 0.2 when 2 then 0.4 when 3 then 0.6 when 4 then 0.8 when 5 then 1.0 else 0 end
 $$;
 
 -- Vista de reporte; security_invoker hace que respete el RLS de quien consulta

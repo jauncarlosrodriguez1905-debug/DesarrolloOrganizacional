@@ -1,12 +1,13 @@
-// Misma escala que el HTML original.
-export const SCORE_FACTOR: Record<number, number> = { 1: 0, 2: 0.5, 3: 0.8, 4: 1.0, 5: 1.2 }
+// Escala Likert de 5 puntos, con tope en 100%: factor = puntos / 5.
+// 1 = 20%, 2 = 40%, 3 = 60%, 4 = 80%, 5 = 100%. Antes el 5 valía 120%.
+export const SCORE_FACTOR: Record<number, number> = { 1: 0.2, 2: 0.4, 3: 0.6, 4: 0.8, 5: 1.0 }
 
 export const SCORE_LABEL: Record<number, string> = {
-  1: '1★ No Cumplió (0%)',
-  2: '2★ En Desarrollo (50%)',
-  3: '3★ Cumplió Objetivo (80%)',
-  4: '4★ Superó Objetivo (100%)',
-  5: '5★ Excelencia (120%)',
+  1: '1★ Totalmente en desacuerdo (20%)',
+  2: '2★ En desacuerdo (40%)',
+  3: '3★ Ni de acuerdo ni en desacuerdo (60%)',
+  4: '4★ De acuerdo (80%)',
+  5: '5★ Totalmente de acuerdo (100%)',
 }
 
 export function weighted(score: number | null | undefined, weight: number): number {
