@@ -10,15 +10,19 @@ export default async function EquipoPage() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const { data: reports } = await supabase
-    .from('profiles')
-    .select('id, full_name, employee_code')
-    .eq('manager_id', user.id)
-    .eq('active', true)
-    .order('full_name')
+  // El equipo y los periodos no dependen entre sí: en paralelo.
+  const [{ data: reports }, periods] = await Promise.all([
+    supabase
+      .from('profiles')
+      .select('id, full_name, employee_code')
+      .eq('manager_id', user.id)
+      .eq('active', true)
+      .order('full_name'),
+    loadPeriods(supabase),
+  ])
   const team = (reports ?? []) as { id: string; full_name: string; employee_code: string | null }[]
 
-  const period = pickPeriod(await loadPeriods(supabase), undefined, 'objectives')
+  const period = pickPeriod(periods, undefined, 'objectives')
 
   const { data: objs } =
     period && team.length > 0

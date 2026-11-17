@@ -34,19 +34,15 @@ export default async function AppShell({
   } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('full_name, role')
-    .eq('id', user.id)
-    .maybeSingle()
-
-  const { count: reportsCount } = await supabase
-    .from('profiles')
-    .select('id', { count: 'exact', head: true })
-    .eq('manager_id', user.id)
+  // Estas 3 consultas no dependen entre sí: se lanzan en paralelo en vez
+  // de una tras otra. AppShell corre en CADA vista, así que aquí se
+  // ahorra un viaje a Supabase en cada cambio de pantalla.
+  const [{ data: profile }, { count: reportsCount }, { data: matrix }] = await Promise.all([
+    supabase.from('profiles').select('full_name, role').eq('id', user.id).maybeSingle(),
+    supabase.from('profiles').select('id', { count: 'exact', head: true }).eq('manager_id', user.id),
+    supabase.from('app_settings').select('value').eq('key', 'matrix_url').maybeSingle(),
+  ])
   const isManager = profile?.role === 'manager' || (reportsCount ?? 0) > 0
-
-  const { data: matrix } = await supabase.from('app_settings').select('value').eq('key', 'matrix_url').maybeSingle()
 
   const name = profile?.full_name ?? user.email ?? 'Usuario'
   const initials =

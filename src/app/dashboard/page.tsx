@@ -137,11 +137,22 @@ export default async function DashboardPage({
     .map(([key, e]) => ({ name: key === 'none' ? 'Sin área' : areaName.get(key) ?? 'Sin área', ...e }))
     .sort((a, b) => (avg(b.mgr) ?? -1) - (avg(a.mgr) ?? -1))
 
-  // Mi resultado
-  const { data: myObjs } = await supabase
-    .from('objectives').select('id, title, category, weight')
-    .eq('owner_id', user.id).eq('scope', 'individual').eq('status', 'approved').eq('period_id', period.id)
-    .order('created_at')
+  // Mi resultado: objetivos, plan y reconocimientos no dependen entre sí.
+  // Las evaluaciones sí dependen de los objetivos (necesitan sus ids).
+  const [{ data: myObjs }, { data: myPlanData }, { data: myRecData }] = await Promise.all([
+    supabase
+      .from('objectives').select('id, title, category, weight')
+      .eq('owner_id', user.id).eq('scope', 'individual').eq('status', 'approved').eq('period_id', period.id)
+      .order('created_at'),
+    supabase
+      .from('action_plans').select('actions, due_date, status')
+      .eq('employee_id', user.id).eq('period_id', period.id).eq('cycle', cycle).maybeSingle(),
+    supabase
+      .from('recognitions').select('cycle, body')
+      .eq('employee_id', user.id).eq('period_id', period.id)
+      .in('cycle', cycle === 'final' ? cycles.filter((c) => c.value !== 'final').map((c) => c.value) : [cycle])
+      .order('cycle'),
+  ])
   const mine = (myObjs ?? []) as { id: string; title: string; category: string; weight: number }[]
   const { data: myEvs } = mine.length
     ? await supabase.from('evaluations').select('objective_id, kind, score, cycle')
@@ -157,15 +168,7 @@ export default async function DashboardPage({
     }
     return evs.find((e) => e.objective_id === oid && e.kind === kind && e.cycle === cycle)?.score
   }
-  const { data: myPlanData } = await supabase
-    .from('action_plans').select('actions, due_date, status')
-    .eq('employee_id', user.id).eq('period_id', period.id).eq('cycle', cycle).maybeSingle()
   const myPlan = myPlanData as { actions: string; due_date: string | null; status: GoalStatus } | null
-  const { data: myRecData } = await supabase
-    .from('recognitions').select('cycle, body')
-    .eq('employee_id', user.id).eq('period_id', period.id)
-    .in('cycle', cycle === 'final' ? cycles.filter((c) => c.value !== 'final').map((c) => c.value) : [cycle])
-    .order('cycle')
   const myRecs = (myRecData ?? []) as { cycle: string; body: string }[]
   const mySelf = resultOf(user.id, cycle, 'self')
   const myMgr = resultOf(user.id, cycle, 'manager')

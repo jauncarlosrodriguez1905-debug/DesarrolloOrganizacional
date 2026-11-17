@@ -53,38 +53,41 @@ export default async function AutoevaluacionPage({
 }) {
   const { p, error, ok } = await searchParams
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const [{ data: { user } }, periods] = await Promise.all([
+    supabase.auth.getUser(),
+    loadPeriods(supabase),
+  ])
   if (!user) redirect('/login')
 
-  const periods = await loadPeriods(supabase)
   const period = pickPeriod(periods, p, 'evaluations')
   const canEvaluate = !!period?.allow_evaluations
 
-  const { data: objs } = period
-    ? await supabase
-        .from('objectives')
-        .select('id, category, title, description, weight')
-        .eq('owner_id', user.id).eq('scope', 'individual').eq('status', 'approved').eq('period_id', period.id)
-        .order('created_at')
-    : { data: [] }
+  // Objetivos y retroalimentación solo dependen del periodo: en paralelo.
+  const [{ data: objs }, { data: fb }] = period
+    ? await Promise.all([
+        supabase
+          .from('objectives')
+          .select('id, category, title, description, weight')
+          .eq('owner_id', user.id).eq('scope', 'individual').eq('status', 'approved').eq('period_id', period.id)
+          .order('created_at'),
+        supabase
+          .from('feedback').select('body')
+          .eq('employee_id', user.id).eq('period_id', period.id).eq('cycle', CYCLE).maybeSingle(),
+      ])
+    : [{ data: [] }, { data: null }]
   const objectives = (objs ?? []) as Objective[]
-  const evCount = await evidenceCounts(supabase, objectives.map((o) => o.id))
-
-  const { data: evs } = objectives.length
-    ? await supabase
-        .from('evaluations')
-        .select('objective_id, kind, score, comment')
-        .eq('cycle', CYCLE)
-        .in('objective_id', objectives.map((o) => o.id))
-    : { data: [] }
+  const [evCount, { data: evs }] = await Promise.all([
+    evidenceCounts(supabase, objectives.map((o) => o.id)),
+    objectives.length
+      ? supabase
+          .from('evaluations')
+          .select('objective_id, kind, score, comment')
+          .eq('cycle', CYCLE)
+          .in('objective_id', objectives.map((o) => o.id))
+      : Promise.resolve({ data: [] }),
+  ])
   const evals = (evs ?? []) as Ev[]
   const pick = (id: string, kind: Ev['kind']) => evals.find((e) => e.objective_id === id && e.kind === kind)
-
-  const { data: fb } = period
-    ? await supabase
-        .from('feedback').select('body')
-        .eq('employee_id', user.id).eq('period_id', period.id).eq('cycle', CYCLE).maybeSingle()
-    : { data: null }
 
   return (
     <AppShell

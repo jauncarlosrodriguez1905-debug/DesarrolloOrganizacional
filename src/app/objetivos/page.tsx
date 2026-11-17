@@ -79,10 +79,13 @@ export default async function ObjetivosPage({
 }) {
   const { p, error, ok } = await searchParams
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  // La sesión y los periodos no dependen entre sí: en paralelo.
+  const [{ data: { user } }, periods] = await Promise.all([
+    supabase.auth.getUser(),
+    loadPeriods(supabase),
+  ])
   if (!user) redirect('/login')
 
-  const periods = await loadPeriods(supabase)
   const period = pickPeriod(periods, p, 'objectives')
   const canDefine = !!period?.allow_objectives
 

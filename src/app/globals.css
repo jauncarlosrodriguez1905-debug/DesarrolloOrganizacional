@@ -40,6 +40,16 @@ p { margin: 0; }
 
 :focus-visible { outline: 2px solid var(--brand-deep); outline-offset: 2px; }
 
+.loading-bar {
+  display: block;
+  border-radius: 8px;
+  background: linear-gradient(90deg, var(--line) 25%, var(--surface) 50%, var(--line) 75%);
+  background-size: 200% 100%;
+  animation: loading-shimmer 1.4s infinite linear;
+}
+.sidebar .loading-bar { background: linear-gradient(90deg, rgba(255,255,255,.08) 25%, rgba(255,255,255,.16) 50%, rgba(255,255,255,.08) 75%); background-size: 200% 100%; }
+@keyframes loading-shimmer { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+
 /* ---------- Estructura de la app ---------- */
 .shell { display: grid; grid-template-columns: 264px minmax(0, 1fr); min-height: 100vh; }
 

@@ -37,11 +37,13 @@ export default async function ReportesPage({
   const cycles = cyclesFor(period.starts_on, period.ends_on)
   const cycle = pickCycle(cycles, c)
 
-  const progress = await fetchAll<Prog>((a, b) =>
-    supabase.from('person_progress').select('owner_id, full_name, area_id, approved')
-      .eq('period_id', period.id).gt('approved', 0).order('full_name').range(a, b)
-  )
-  const { data: areasData } = await supabase.from('areas').select('id, name')
+  const [progress, { data: areasData }] = await Promise.all([
+    fetchAll<Prog>((a, b) =>
+      supabase.from('person_progress').select('owner_id, full_name, area_id, approved')
+        .eq('period_id', period.id).gt('approved', 0).order('full_name').range(a, b)
+    ),
+    supabase.from('areas').select('id, name'),
+  ])
   const areaName = new Map(((areasData ?? []) as { id: string; name: string }[]).map((a) => [a.id, a.name]))
 
   // Quien solo puede verse a sí mismo va directo a su reporte.

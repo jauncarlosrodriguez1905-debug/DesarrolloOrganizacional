@@ -96,7 +96,9 @@ export default async function SeguimientoPage({
   const cycles = cyclesFor(period.starts_on, period.ends_on)
   const quarters = cycles.filter((c) => c.value !== 'final')
 
-  const [progress, rows] = await Promise.all([
+  // Las 5 consultas solo dependen del periodo: todas en paralelo en vez
+  // de una tras otra (antes eran 3 viajes seguidos después del primero).
+  const [progress, rows, plans, recs, { data: areasData }] = await Promise.all([
     fetchAll<Prog>((from, to) =>
       supabase.from('person_progress').select('owner_id, objectives, approved, submitted, returned')
         .eq('period_id', period.id).order('owner_id').range(from, to)
@@ -105,18 +107,18 @@ export default async function SeguimientoPage({
       supabase.from('cycle_results').select('owner_id, cycle, kind, evaluated, objectives, published, result')
         .eq('period_id', period.id).order('owner_id').order('cycle').order('kind').range(from, to)
     ),
+    fetchAll<{ employee_id: string; cycle: string }>((from, to) =>
+      supabase.from('action_plans').select('employee_id, cycle')
+        .eq('period_id', period.id).order('employee_id').order('cycle').range(from, to)
+    ),
+    fetchAll<{ employee_id: string; cycle: string }>((from, to) =>
+      supabase.from('recognitions').select('employee_id, cycle')
+        .eq('period_id', period.id).order('employee_id').order('cycle').range(from, to)
+    ),
+    supabase.from('areas').select('id, name').order('name'),
   ])
-  const plans = await fetchAll<{ employee_id: string; cycle: string }>((from, to) =>
-    supabase.from('action_plans').select('employee_id, cycle')
-      .eq('period_id', period.id).order('employee_id').order('cycle').range(from, to)
-  )
   const planSet = new Set(plans.map((x) => `${x.employee_id}|${x.cycle}`))
-  const recs = await fetchAll<{ employee_id: string; cycle: string }>((from, to) =>
-    supabase.from('recognitions').select('employee_id, cycle')
-      .eq('period_id', period.id).order('employee_id').order('cycle').range(from, to)
-  )
   const recSet = new Set(recs.map((x) => `${x.employee_id}|${x.cycle}`))
-  const { data: areasData } = await supabase.from('areas').select('id, name').order('name')
   const areas = (areasData ?? []) as { id: string; name: string }[]
   const areaName = new Map(areas.map((x) => [x.id, x.name]))
   const personName = new Map(people.map((x) => [x.id, x.full_name]))

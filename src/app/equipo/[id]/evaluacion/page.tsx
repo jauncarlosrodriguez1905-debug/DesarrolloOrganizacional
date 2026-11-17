@@ -164,64 +164,65 @@ export default async function EvaluatePersonPage({
   const { id } = await params
   const { p, c, error, ok } = await searchParams
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  // La sesión, la persona y los periodos no dependen entre sí: en paralelo.
+  const [{ data: { user } }, { data: person }, periods] = await Promise.all([
+    supabase.auth.getUser(),
+    supabase.from('profiles').select('id, full_name, manager_id').eq('id', id).maybeSingle(),
+    loadPeriods(supabase),
+  ])
   if (!user) redirect('/login')
-
-  const { data: person } = await supabase
-    .from('profiles').select('id, full_name, manager_id').eq('id', id).maybeSingle()
   if (!person || person.manager_id !== user.id) notFound()
 
-  const periods = await loadPeriods(supabase)
   const period = pickPeriod(periods, p, 'evaluations')
 
   // El jefe evalúa solo por cuarto: el cierre anual es el promedio de los cuartos.
   const cycles = period ? cyclesFor(period.starts_on, period.ends_on).filter((x) => x.value !== 'final') : []
   const picked = pickCycle(cycles, c)
   const cycle = cycles.some((x) => x.value === picked) ? picked : cycles[cycles.length - 1]?.value ?? ''
+  const isQuarter = /^T[1-3]$/.test(cycle)
 
-  const { data: objs } = period
-    ? await supabase
-        .from('objectives').select('id, category, title, description, weight')
-        .eq('owner_id', id).eq('scope', 'individual').eq('status', 'approved').eq('period_id', period.id)
-        .order('created_at')
-    : { data: [] }
+  // Objetivos, retroalimentación, plan y reconocimiento solo dependen del
+  // periodo y el ciclo: todos en paralelo en vez de uno tras otro.
+  const [{ data: objs }, { data: fb }, { data: planData }, { data: recData }] = period
+    ? await Promise.all([
+        supabase
+          .from('objectives').select('id, category, title, description, weight')
+          .eq('owner_id', id).eq('scope', 'individual').eq('status', 'approved').eq('period_id', period.id)
+          .order('created_at'),
+        supabase
+          .from('feedback').select('body, released_at')
+          .eq('employee_id', id).eq('period_id', period.id).eq('cycle', cycle).maybeSingle(),
+        isQuarter
+          ? supabase
+              .from('action_plans').select('actions, due_date, status')
+              .eq('employee_id', id).eq('period_id', period.id).eq('cycle', cycle).maybeSingle()
+          : Promise.resolve({ data: null }),
+        isQuarter
+          ? supabase
+              .from('recognitions').select('body')
+              .eq('employee_id', id).eq('period_id', period.id).eq('cycle', cycle).maybeSingle()
+          : Promise.resolve({ data: null }),
+      ])
+    : [{ data: [] }, { data: null }, { data: null }, { data: null }]
   const objectives = (objs ?? []) as Objective[]
-  const evCount = await evidenceCounts(supabase, objectives.map((o) => o.id))
-
-  const { data: evs } = objectives.length
-    ? await supabase
-        .from('evaluations').select('objective_id, kind, score, comment, released_at')
-        .eq('cycle', cycle).in('objective_id', objectives.map((o) => o.id))
-    : { data: [] }
+  const [evCount, { data: evs }] = await Promise.all([
+    evidenceCounts(supabase, objectives.map((o) => o.id)),
+    objectives.length
+      ? supabase
+          .from('evaluations').select('objective_id, kind, score, comment, released_at')
+          .eq('cycle', cycle).in('objective_id', objectives.map((o) => o.id))
+      : Promise.resolve({ data: [] }),
+  ])
   const evals = (evs ?? []) as Ev[]
   const pick = (oid: string, kind: Ev['kind']) => evals.find((e) => e.objective_id === oid && e.kind === kind)
   const published = objectives.length > 0 && objectives.every((o) => pick(o.id, 'manager')?.released_at)
-
-  const { data: fb } = period
-    ? await supabase
-        .from('feedback').select('body, released_at')
-        .eq('employee_id', id).eq('period_id', period.id).eq('cycle', cycle).maybeSingle()
-    : { data: null }
 
   const mgrTotal =
     objectives.length > 0 && objectives.every((o) => pick(o.id, 'manager'))
       ? objectives.reduce((a, o) => a + o.weight * (SCORE_FACTOR[pick(o.id, 'manager')!.score] ?? 0), 0)
       : null
-  const isQuarter = /^T[1-3]$/.test(cycle)
   const needsPlan = isQuarter && mgrTotal !== null && mgrTotal < LOW_THRESHOLD
-  const { data: planData } =
-    period && isQuarter
-      ? await supabase
-          .from('action_plans').select('actions, due_date, status')
-          .eq('employee_id', id).eq('period_id', period.id).eq('cycle', cycle).maybeSingle()
-      : { data: null }
   const plan = planData as { actions: string; due_date: string | null; status: GoalStatus } | null
-  const { data: recData } =
-    period && isQuarter
-      ? await supabase
-          .from('recognitions').select('body')
-          .eq('employee_id', id).eq('period_id', period.id).eq('cycle', cycle).maybeSingle()
-      : { data: null }
   const recognition = recData as { body: string } | null
 
   return (
