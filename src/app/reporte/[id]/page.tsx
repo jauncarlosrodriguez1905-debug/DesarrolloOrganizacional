@@ -7,7 +7,7 @@ import CyclePills from '@/components/CyclePills'
 import PrintButton from '@/components/PrintButton'
 import { Stars } from '@/components/Stars'
 import { cyclesFor, pickCycle, cycleLabel } from '@/lib/cycles'
-import { SCORE_FACTOR, classify } from '@/lib/scoring'
+import { SCORE_FACTOR, SCORE_LABEL, classify } from '@/lib/scoring'
 import { formatDate, GOAL_LABEL, type GoalStatus } from '@/lib/goals'
 
 type Period = { id: string; name: string; starts_on: string; ends_on: string; status: string; allow_evaluations?: boolean }
@@ -208,6 +208,29 @@ export default async function ReportePage({
               {verdict ? <span className={`badge ${TONE_BADGE[verdict.tone]}`}>{verdict.label}</span> : <span className="muted">Pendiente</span>}
             </div>
           </div>
+        </section>
+
+        <section className="report-block">
+          <h2 className="report-h2">Escala de evaluación del jefe</h2>
+          <p className="report-note" style={{ marginTop: 0 }}>
+            Escala Likert de 5 puntos. La calificación del jefe se calcula con esta escala y el total máximo es 100%.
+          </p>
+          <table className="report-table report-table--compact">
+            <thead><tr><th>Puntos</th><th>Escala Likert</th><th className="num">Valor</th></tr></thead>
+            <tbody>
+              {[1, 2, 3, 4, 5].map((n) => (
+                <tr key={n}>
+                  <td><Stars value={n} /></td>
+                  <td>{SCORE_LABEL[n].replace(/^\d★ /, '').replace(/ \(\d+%\)$/, '')}</td>
+                  <td className="num">{Math.round((SCORE_FACTOR[n] ?? 0) * 100)}%</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <p className="report-note">
+            Clasificación: 100% Excelente / Sobresaliente · 80% o más Cumple con las Expectativas · menos de 80% Requiere Plan de Mejora.
+            {isAnnual ? ' En el cierre anual, la calificación del jefe es el promedio de los cuartos.' : ''}
+          </p>
         </section>
 
         {objectives.length === 0 ? (
