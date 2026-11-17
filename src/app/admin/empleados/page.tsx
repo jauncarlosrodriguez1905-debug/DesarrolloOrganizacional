@@ -161,7 +161,7 @@ export default async function EmpleadosPage({
             <label className="field">
               <span>Contraseña temporal</span>
               <input name="password" type="text" minLength={8} required />
-              <div className="field-hint">Mínimo 8 caracteres. Compártela directamente con la persona.</div>
+              <div className="field-hint">Mínimo 8 caracteres. No se le envía ningún correo: comparte la contraseña directamente con la persona.</div>
             </label>
             <label className="field">
               <span>Área</span>
