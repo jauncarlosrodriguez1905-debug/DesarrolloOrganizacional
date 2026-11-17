@@ -26,5 +26,15 @@ export async function GET(request: NextRequest) {
     failed = true
   }
 
-  return NextResponse.redirect(`${origin}${failed ? '/login?error=confirm' : '/dashboard'}`)
+  // A dónde ir tras validar el enlace: solo se acepta la página de
+  // contraseña nueva; una recuperación sin destino también va ahí.
+  const next = searchParams.get('next')
+  const destination =
+    next === '/auth/nueva-contrasena'
+      ? next
+      : type === 'recovery'
+        ? '/auth/nueva-contrasena'
+        : '/dashboard'
+
+  return NextResponse.redirect(`${origin}${failed ? '/login?error=confirm' : destination}`)
 }

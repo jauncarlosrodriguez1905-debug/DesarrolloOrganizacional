@@ -17,9 +17,9 @@ async function login(formData: FormData) {
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string }>
+  searchParams: Promise<{ error?: string; ok?: string }>
 }) {
-  const { error } = await searchParams
+  const { error, ok } = await searchParams
   const supabase = await createClient()
   const { data: signupOpen } = await supabase.rpc('signup_is_open')
   return (
@@ -39,6 +39,11 @@ export default async function LoginPage({
         <form action={login}>
           <h2>Iniciar sesión</h2>
           <p className="lead">Usa el correo y la contraseña que te asignó Recursos Humanos.</p>
+          {ok === 'password' && (
+            <div className="success" role="status">
+              Tu contraseña fue actualizada. Entra con tu contraseña nueva.
+            </div>
+          )}
           {error && (
             <div className="alert" role="alert">
               {error === 'confirm'
@@ -55,6 +60,9 @@ export default async function LoginPage({
             <input name="password" type="password" autoComplete="current-password" required />
           </label>
           <button type="submit" className="btn">Entrar</button>
+          <p className="lead" style={{ marginTop: 18 }}>
+            ¿Olvidaste tu contraseña? <Link href="/login/recuperar" className="link">Recuperarla</Link>
+          </p>
           {signupOpen && (
             <p className="lead" style={{ marginTop: 18 }}>
               ¿Primera vez? <Link href="/registro" className="link">Crea tu cuenta</Link>
